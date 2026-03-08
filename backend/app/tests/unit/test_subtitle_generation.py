@@ -19,7 +19,8 @@ def test_srt_generation():
         path = os.path.join(tmpdir, "test.srt")
         result = generator.generate_srt(chunks, sermon_start=100.0, output_path=path)
         assert os.path.exists(result)
-        content = open(result).read()
+        with open(result) as f:
+            content = f.read()
         assert "00:00:00,000" in content  # first chunk relative to sermon_start
         assert "Hello world" in content
 
@@ -31,7 +32,8 @@ def test_vtt_generation():
         path = os.path.join(tmpdir, "test.vtt")
         result = generator.generate_vtt(chunks, sermon_start=100.0, output_path=path)
         assert os.path.exists(result)
-        content = open(result).read()
+        with open(result) as f:
+            content = f.read()
         assert "WEBVTT" in content
         assert "00:00:00.000" in content
         assert "Hello world" in content
@@ -43,6 +45,7 @@ def test_srt_relative_timestamps():
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "test.srt")
         generator.generate_srt(chunks, sermon_start=3600.0, output_path=path)
-        content = open(path).read()
+        with open(path) as f:
+            content = f.read()
         # Timestamps should be relative (0s from sermon start)
         assert "00:00:00,000" in content

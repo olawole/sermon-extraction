@@ -10,7 +10,7 @@ async def test_create_job(client: AsyncClient):
     data = response.json()
     assert data["stage"] == "pending"
     assert "id" in data
-    assert "youtube.com" in data["youtube_url"]
+    assert data["youtube_url"].startswith("https://www.youtube.com/")
 
 
 @pytest.mark.asyncio

@@ -65,7 +65,8 @@ class JobOrchestrator:
             dl_result = await self.ingestion.download(str(job.youtube_url), job_dir)
             video_path = dl_result["file_path"]
             job.title = dl_result.get("title", "")
-            job.duration_seconds = float(dl_result.get("duration") or DEFAULT_VIDEO_DURATION_SECONDS)
+            raw_duration = dl_result.get("duration")
+            job.duration_seconds = float(raw_duration) if raw_duration is not None else DEFAULT_VIDEO_DURATION_SECONDS
         except Exception:
             # Use fake data in test/dev mode
             video_path = os.path.join(job_dir, "video.mp4")
