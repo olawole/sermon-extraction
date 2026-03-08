@@ -1,8 +1,8 @@
 from __future__ import annotations
-import asyncio
 import logging
 import os
 from app.core.config import settings
+from app.infrastructure.utils.subprocess_helper import run_subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +20,8 @@ class AudioExtractionService:
             output_path,
         ]
         try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            _, stderr = await proc.communicate()
-            if proc.returncode != 0:
+            _, stderr, returncode = await run_subprocess(cmd)
+            if returncode != 0:
                 raise RuntimeError(f"ffmpeg audio extraction failed: {stderr.decode()[:500]}")
             return output_path
         except FileNotFoundError:

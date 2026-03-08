@@ -1,12 +1,11 @@
 from __future__ import annotations
-import asyncio
 import json
 import logging
 import os
 import re
-import subprocess
 from typing import Any
 from app.core.config import settings
+from app.infrastructure.utils.subprocess_helper import run_subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -29,13 +28,8 @@ class VideoIngestionService:
             url,
         ]
         try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await proc.communicate()
-            if proc.returncode != 0:
+            stdout, stderr, returncode = await run_subprocess(cmd)
+            if returncode != 0:
                 raise RuntimeError(f"yt-dlp failed: {stderr.decode()[:500]}")
             info = json.loads(stdout.decode().strip().splitlines()[-1])
             # yt-dlp stores the actual saved path in _filename; fall back to

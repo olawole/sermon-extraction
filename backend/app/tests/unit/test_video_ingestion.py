@@ -81,3 +81,32 @@ async def test_download_raises_when_ytdlp_fails(tmp_path):
         service = VideoIngestionService()
         with pytest.raises(RuntimeError, match="yt-dlp failed"):
             await service.download("https://youtube.com/watch?v=abc123", str(tmp_path))
+
+
+@pytest.mark.asyncio
+async def test_download_falls_back_when_create_subprocess_not_implemented(tmp_path):
+    """Falls back to subprocess.run when asyncio.create_subprocess_exec raises NotImplementedError."""
+    from app.infrastructure.youtube.ingestion import VideoIngestionService
+
+    info = {
+        "id": "abc123",
+        "ext": "mp4",
+        "title": "Fallback Video",
+        "duration": 90,
+        "_filename": str(tmp_path / "abc123.mp4"),
+    }
+    stdout = json.dumps(info).encode()
+
+    mock_result = MagicMock()
+    mock_result.stdout = stdout
+    mock_result.stderr = b""
+    mock_result.returncode = 0
+
+    with patch("asyncio.create_subprocess_exec", AsyncMock(side_effect=NotImplementedError)):
+        with patch("subprocess.run", return_value=mock_result):
+            service = VideoIngestionService()
+            result = await service.download("https://youtube.com/watch?v=abc123", str(tmp_path))
+
+    assert result["file_path"] == str(tmp_path / "abc123.mp4")
+    assert result["title"] == "Fallback Video"
+    assert result["duration"] == 90
