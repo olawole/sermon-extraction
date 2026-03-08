@@ -80,6 +80,10 @@ class JobOrchestrator:
             raise RuntimeError(
                 f"Audio file not found at {audio_path}; download or extraction may have failed"
             )
+        if Path(audio_path).stat().st_size == 0:
+            raise RuntimeError(
+                f"Audio file at {audio_path} is empty (0 bytes); audio extraction may have failed"
+            )
 
         # Stage 3: Transcribe
         await self.job_service.update_stage(job_id, JobStage.transcribing)
