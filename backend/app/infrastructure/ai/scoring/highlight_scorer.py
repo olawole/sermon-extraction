@@ -10,22 +10,23 @@ _HOOK_PHRASES = [
 
 
 class RuleBasedHighlightScorer(HighlightScorer):
+    IDEAL_DURATION_SECONDS = 45.0
+    IDEAL_PHRASE_COUNT = 5.0
+    IDEAL_TEXT_LENGTH = 200.0
+
     def score(self, candidate: HighlightCandidate) -> float:
         scores: list[float] = []
 
-        # Duration score (ideal ~45s)
         duration = candidate.end_seconds - candidate.start_seconds
         if duration <= 0:
             return 0.0
-        ideal = 45.0
-        duration_score = 1.0 - min(abs(duration - ideal) / ideal, 1.0)
+        duration_score = 1.0 - min(abs(duration - self.IDEAL_DURATION_SECONDS) / self.IDEAL_DURATION_SECONDS, 1.0)
         scores.append(duration_score)
 
         text = candidate.transcript.lower()
 
-        # Hook phrase score
         phrase_hits = sum(1 for p in _HOOK_PHRASES if p in text)
-        hook_score = min(phrase_hits / 5.0, 1.0)
+        hook_score = min(phrase_hits / self.IDEAL_PHRASE_COUNT, 1.0)
         scores.append(hook_score)
 
         # Sentence completeness (ends with punctuation)
@@ -33,8 +34,7 @@ class RuleBasedHighlightScorer(HighlightScorer):
         completeness = 1.0 if stripped and stripped[-1] in ".!?" else 0.4
         scores.append(completeness)
 
-        # Text length (at least 50 chars is good)
-        length_score = min(len(text) / 200.0, 1.0)
+        length_score = min(len(text) / self.IDEAL_TEXT_LENGTH, 1.0)
         scores.append(length_score)
 
         return round(sum(scores) / len(scores), 4)

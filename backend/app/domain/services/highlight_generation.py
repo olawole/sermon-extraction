@@ -18,6 +18,7 @@ class HighlightCandidate:
 
 class HighlightCandidateGenerator:
     TARGET_DURATIONS = [15.0, 30.0, 45.0, 60.0]
+    MAX_HOOK_TEXT_LENGTH = 100
 
     def generate_candidates(
         self,
@@ -47,7 +48,7 @@ class HighlightCandidateGenerator:
                     continue
 
                 text = " ".join(c.text for c in window_chunks)
-                first_sentence = text.split(".")[0][:100] if "." in text else text[:100]
+                first_sentence = text.split(".")[0][:self.MAX_HOOK_TEXT_LENGTH] if "." in text else text[:self.MAX_HOOK_TEXT_LENGTH]
 
                 candidates.append(HighlightCandidate(
                     start_seconds=chunk.start_seconds,

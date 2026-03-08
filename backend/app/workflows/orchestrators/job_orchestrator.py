@@ -26,6 +26,8 @@ from app.infrastructure.ai.classification.base import ClassificationWindow as CW
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_VIDEO_DURATION_SECONDS = 3600.0
+
 
 class JobOrchestrator:
     def __init__(self, db: AsyncSession):
@@ -63,12 +65,12 @@ class JobOrchestrator:
             dl_result = await self.ingestion.download(str(job.youtube_url), job_dir)
             video_path = dl_result["file_path"]
             job.title = dl_result.get("title", "")
-            job.duration_seconds = float(dl_result.get("duration") or 3600)
+            job.duration_seconds = float(dl_result.get("duration") or DEFAULT_VIDEO_DURATION_SECONDS)
         except Exception:
             # Use fake data in test/dev mode
             video_path = os.path.join(job_dir, "video.mp4")
             job.title = job.title or "Test Video"
-            job.duration_seconds = job.duration_seconds or 3600.0
+            job.duration_seconds = job.duration_seconds or DEFAULT_VIDEO_DURATION_SECONDS
         await self.db.commit()
 
         # Stage 2: Extract Audio
@@ -83,7 +85,7 @@ class JobOrchestrator:
         # Stage 3: Transcribe
         await self.job_service.update_stage(job_id, JobStage.transcribing)
         transcript_data = await self.transcription_provider.transcribe(
-            audio_path, duration_seconds=job.duration_seconds or 3600.0
+            audio_path, duration_seconds=job.duration_seconds or DEFAULT_VIDEO_DURATION_SECONDS
         )
 
         # Stage 4: Persist transcript
@@ -130,7 +132,7 @@ class JobOrchestrator:
 
         # Stage 7: Detect services
         await self.job_service.update_stage(job_id, JobStage.detecting_services)
-        total_duration = job.duration_seconds or 3600.0
+        total_duration = job.duration_seconds or DEFAULT_VIDEO_DURATION_SECONDS
         service_boundaries = self.service_detector.detect(smoothed, total_duration)
 
         # Stage 8: Persist service segments
