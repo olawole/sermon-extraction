@@ -60,17 +60,11 @@ class JobOrchestrator:
 
         # Stage 1: Download
         await self.job_service.update_stage(job_id, JobStage.downloading)
-        try:
-            dl_result = await self.ingestion.download(str(job.youtube_url), job_dir)
-            video_path = dl_result["file_path"]
-            job.title = dl_result.get("title", "")
-            raw_duration = dl_result.get("duration")
-            job.duration_seconds = float(raw_duration) if raw_duration is not None else DEFAULT_VIDEO_DURATION_SECONDS
-        except Exception:
-            # Use fake data in test/dev mode
-            video_path = str(Path(job_dir) / "video.mp4")
-            job.title = job.title or "Test Video"
-            job.duration_seconds = job.duration_seconds or DEFAULT_VIDEO_DURATION_SECONDS
+        dl_result = await self.ingestion.download(str(job.youtube_url), job_dir)
+        video_path = dl_result["file_path"]
+        job.title = dl_result.get("title", "")
+        raw_duration = dl_result.get("duration")
+        job.duration_seconds = float(raw_duration) if raw_duration is not None else DEFAULT_VIDEO_DURATION_SECONDS
         await self.db.commit()
 
         # Stage 2: Extract Audio
@@ -79,8 +73,8 @@ class JobOrchestrator:
         if Path(video_path).exists():
             try:
                 await self.audio_extractor.extract_audio(video_path, audio_path)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error(f"Audio extraction failed for job {job_id}: {exc}")
 
         if not Path(audio_path).exists():
             raise RuntimeError(
