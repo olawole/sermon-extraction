@@ -86,3 +86,28 @@ class JobService:
         await self.db.commit()
         await self.db.refresh(highlight)
         return highlight
+
+    async def get_highlight(self, highlight_id: int) -> Optional[HighlightClip]:
+        result = await self.db.execute(select(HighlightClip).where(HighlightClip.id == highlight_id))
+        return result.scalar_one_or_none()
+
+    async def get_approved_highlights(self, job_id: int) -> list[HighlightClip]:
+        result = await self.db.execute(
+            select(HighlightClip).where(
+                HighlightClip.job_id == job_id,
+                HighlightClip.status == HighlightStatus.approved.value,
+            )
+        )
+        return list(result.scalars().all())
+
+    async def attach_rendered_asset(self, highlight_id: int, asset: MediaAsset) -> HighlightClip:
+        highlight = await self.get_highlight(highlight_id)
+        if highlight is None:
+            raise ValueError(f"Highlight {highlight_id} not found")
+        self.db.add(asset)
+        await self.db.flush()
+        highlight.rendered_asset_id = asset.id
+        highlight.status = HighlightStatus.rendered.value
+        await self.db.commit()
+        await self.db.refresh(highlight)
+        return highlight

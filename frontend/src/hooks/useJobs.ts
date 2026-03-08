@@ -50,3 +50,30 @@ export const useRejectHighlightMutation = (jobId: number) => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['highlights', jobId] }),
   });
 };
+
+export const useRenderHighlightMutation = (jobId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (highlightId: number) => api.renderHighlight(jobId, highlightId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['highlights', jobId] }),
+  });
+};
+
+export const useRenderAllHighlightsMutation = (jobId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.renderAllHighlights(jobId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['highlights', jobId] }),
+  });
+};
+
+export const useReprocessJobMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: number) => api.reprocessJob(jobId),
+    onSuccess: (job) => {
+      qc.invalidateQueries({ queryKey: ['job', job.id] });
+      qc.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+};
