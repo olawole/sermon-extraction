@@ -14,8 +14,7 @@ from app.domain.services.segment_smoothing import smooth_and_merge
 from app.domain.services.service_boundary_detection import ServiceBoundaryDetectionService
 from app.domain.services.sermon_detection import SermonDetectionService
 from app.domain.services.highlight_generation import HighlightCandidateGenerator
-from app.infrastructure.ai.transcription.fake_provider import FakeTranscriptionProvider
-from app.infrastructure.ai.classification.fake_classifier import FakeSectionClassifier
+from app.infrastructure.ai.provider_factory import get_transcription_provider, get_classification_provider
 from app.infrastructure.ai.scoring.highlight_scorer import RuleBasedHighlightScorer
 from app.infrastructure.youtube.ingestion import VideoIngestionService
 from app.infrastructure.media.audio_extraction import AudioExtractionService
@@ -36,8 +35,8 @@ class JobOrchestrator:
         self.storage = LocalStorageService()
         self.ingestion = VideoIngestionService()
         self.audio_extractor = AudioExtractionService()
-        self.transcription_provider = FakeTranscriptionProvider()
-        self.classifier = FakeSectionClassifier()
+        self.transcription_provider = get_transcription_provider(settings.transcription_provider)
+        self.classifier = get_classification_provider(settings.classification_provider)
         self.service_detector = ServiceBoundaryDetectionService()
         self.sermon_detector = SermonDetectionService()
         self.highlight_generator = HighlightCandidateGenerator()

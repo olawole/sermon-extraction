@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     ai_provider: str = "fake"
     transcription_provider: str = "fake"
     classification_provider: str = "fake"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    whisper_model: str = "whisper-1"
     debug: bool = False
     cors_origins: list[str] = ["http://localhost:5173"]
 
