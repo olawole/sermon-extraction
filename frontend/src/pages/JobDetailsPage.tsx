@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Tabs, Button, Space } from 'antd';
+import { Tabs, Button, Space, Popconfirm } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 
@@ -26,6 +26,8 @@ import {
   useRejectHighlightMutation,
   useRenderHighlightMutation,
   useRenderAllHighlightsMutation,
+  useRetryJobMutation,
+  useDeleteJobMutation,
 } from '@/hooks/useJobs';
 
 const PageWrapper = styled.div`
@@ -47,6 +49,8 @@ const JobDetailsPage: React.FC = () => {
   const rejectMutation = useRejectHighlightMutation(jobId);
   const renderMutation = useRenderHighlightMutation(jobId);
   const renderAllMutation = useRenderAllHighlightsMutation(jobId);
+  const retryMutation = useRetryJobMutation();
+  const deleteMutation = useDeleteJobMutation();
 
   if (jobLoading) return <LoadingState tip="Loading job…" />;
   if (jobError || !job) return <ErrorState message="Failed to load job." />;
@@ -138,6 +142,27 @@ const JobDetailsPage: React.FC = () => {
         >
           Back to Jobs
         </Button>
+        {job.stage === 'failed' && (
+          <Button
+            type="primary"
+            loading={retryMutation.isPending}
+            onClick={() => retryMutation.mutate(jobId)}
+          >
+            Retry
+          </Button>
+        )}
+        <Popconfirm
+          title="Delete this job?"
+          description="This action cannot be undone."
+          onConfirm={() => deleteMutation.mutate(jobId, { onSuccess: () => navigate('/') })}
+          okText="Delete"
+          okButtonProps={{ danger: true }}
+          cancelText="Cancel"
+        >
+          <Button danger loading={deleteMutation.isPending}>
+            Delete
+          </Button>
+        </Popconfirm>
       </Space>
 
       <JobStatusCard job={job} />

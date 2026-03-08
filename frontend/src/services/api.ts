@@ -66,3 +66,12 @@ export const reprocessJob = async (jobId: number): Promise<Job> => {
   const { data } = await client.post<Job>(`/jobs/${jobId}/reprocess`);
   return data;
 };
+
+export const retryJob = async (jobId: number): Promise<Job> => {
+  const { data } = await client.post<Job>(`/jobs/${jobId}/retry`);
+  return data;
+};
+
+export const deleteJob = async (jobId: number): Promise<void> => {
+  await client.delete(`/jobs/${jobId}`);
+};

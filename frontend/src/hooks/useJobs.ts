@@ -77,3 +77,25 @@ export const useReprocessJobMutation = () => {
     },
   });
 };
+
+export const useRetryJobMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: number) => api.retryJob(jobId),
+    onSuccess: (job) => {
+      qc.invalidateQueries({ queryKey: ['job', job.id] });
+      qc.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+};
+
+export const useDeleteJobMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: number) => api.deleteJob(jobId),
+    onSuccess: (_data, jobId) => {
+      qc.invalidateQueries({ queryKey: ['jobs'] });
+      qc.removeQueries({ queryKey: ['job', jobId] });
+    },
+  });
+};
