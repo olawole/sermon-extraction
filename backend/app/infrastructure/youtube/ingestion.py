@@ -38,10 +38,16 @@ class VideoIngestionService:
             if proc.returncode != 0:
                 raise RuntimeError(f"yt-dlp failed: {stderr.decode()[:500]}")
             info = json.loads(stdout.decode().strip().splitlines()[-1])
+            # yt-dlp stores the actual saved path in _filename; fall back to
+            # reconstructing it from the output template %(id)s.%(ext)s
+            file_path = info.get("_filename") or os.path.join(
+                output_dir,
+                f"{info.get('id', '')}.{info.get('ext', 'mp4')}",
+            )
             return {
                 "title": info.get("title", ""),
                 "duration": info.get("duration", 0),
-                "file_path": info.get("filename", ""),
+                "file_path": file_path,
             }
         except FileNotFoundError:
             raise RuntimeError(f"yt-dlp not found at {settings.ytdlp_path}")
