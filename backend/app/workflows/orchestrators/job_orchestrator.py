@@ -22,6 +22,7 @@ from app.infrastructure.media.audio_extraction import AudioExtractionService
 from app.infrastructure.media.video_cut import VideoCutService
 from app.infrastructure.media.subtitle_generator import SubtitleGenerator
 from app.infrastructure.storage.local_storage import LocalStorageService
+from app.infrastructure.ai.classification.base import ClassificationWindow as CW
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,6 @@ class JobOrchestrator:
         await self.job_service.update_stage(job_id, JobStage.classifying)
         windows = create_windows(transcript_data)
         classification_windows = []
-        from app.infrastructure.ai.classification.base import ClassificationWindow as CW
         for w in windows:
             classification_windows.append(CW(
                 start_seconds=w.start_seconds,
