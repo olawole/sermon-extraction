@@ -1,5 +1,5 @@
 import React from 'react';
-import { Typography, List, Tag, Card, Space, Button } from 'antd';
+import { Typography, List, Tag, Card, Space, Button, Popconfirm } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
@@ -7,7 +7,7 @@ import JobCreateForm from '@/features/jobs/JobCreateForm';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorState from '@/components/common/ErrorState';
 import EmptyState from '@/components/common/EmptyState';
-import { useJobsQuery } from '@/hooks/useJobs';
+import { useJobsQuery, useRetryJobMutation, useDeleteJobMutation } from '@/hooks/useJobs';
 import type { Job, JobStage } from '@/types';
 
 const { Title } = Typography;
@@ -29,6 +29,8 @@ const PageWrapper = styled.div`
 const JobSubmissionPage: React.FC = () => {
   const navigate = useNavigate();
   const { data: jobs, isLoading, isError } = useJobsQuery();
+  const retryMutation = useRetryJobMutation();
+  const deleteMutation = useDeleteJobMutation();
 
   return (
     <PageWrapper>
@@ -63,6 +65,29 @@ const JobSubmissionPage: React.FC = () => {
                   >
                     View
                   </Button>,
+                  ...(job.stage === 'failed' ? [
+                    <Button
+                      key="retry"
+                      type="link"
+                      loading={retryMutation.isPending}
+                      onClick={() => retryMutation.mutate(job.id)}
+                    >
+                      Retry
+                    </Button>,
+                  ] : []),
+                  <Popconfirm
+                    key="delete"
+                    title="Delete this job?"
+                    description="This action cannot be undone."
+                    onConfirm={() => deleteMutation.mutate(job.id)}
+                    okText="Delete"
+                    okButtonProps={{ danger: true }}
+                    cancelText="Cancel"
+                  >
+                    <Button type="link" danger loading={deleteMutation.isPending}>
+                      Delete
+                    </Button>
+                  </Popconfirm>,
                 ]}
               >
                 <List.Item.Meta

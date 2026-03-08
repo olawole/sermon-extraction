@@ -100,6 +100,26 @@ class JobService:
         )
         return list(result.scalars().all())
 
+    async def delete_job(self, job_id: int) -> None:
+        job = await self.get_job(job_id)
+        if job is None:
+            raise ValueError(f"Job {job_id} not found")
+        await self.db.delete(job)
+        await self.db.commit()
+
+    async def retry_job(self, job_id: int) -> VideoJob:
+        job = await self.get_job(job_id)
+        if job is None:
+            raise ValueError(f"Job {job_id} not found")
+        if job.stage != JobStage.failed.value:
+            raise ValueError(f"Job {job_id} is not in a failed state")
+        job.stage = JobStage.pending.value
+        job.error_message = None
+        job.updated_at = datetime.now(timezone.utc)
+        await self.db.commit()
+        await self.db.refresh(job)
+        return job
+
     async def attach_rendered_asset(self, highlight_id: int, asset: MediaAsset) -> HighlightClip:
         highlight = await self.get_highlight(highlight_id)
         if highlight is None:

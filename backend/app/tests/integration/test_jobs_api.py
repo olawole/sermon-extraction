@@ -128,3 +128,64 @@ async def test_render_all_highlights(client: AsyncClient):
     response = await client.post(f"/api/v1/jobs/{job_id}/render-all")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_retry_job_not_found(client: AsyncClient):
+    response = await client.post("/api/v1/jobs/99999/retry")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_retry_job_not_failed(client: AsyncClient):
+    from unittest.mock import patch
+
+    with patch("app.api.routes.jobs.run_job_pipeline"):
+        create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+        job_id = create_resp.json()["id"]
+
+        # Job remains in pending state — retry should return 400
+        response = await client.post(f"/api/v1/jobs/{job_id}/retry")
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_retry_failed_job(client: AsyncClient):
+    from app.domain.services.job_service import JobService
+    from app.domain.enums.enums import JobStage
+    from app.infrastructure.db.session import get_db
+
+    create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+    job_id = create_resp.json()["id"]
+
+    # Manually set the job to failed via the API's own dependency override
+    from app.main import app
+    db_override = app.dependency_overrides.get(get_db)
+    async for db in db_override():
+        svc = JobService(db)
+        await svc.update_stage(job_id, JobStage.failed, error="test failure")
+
+    response = await client.post(f"/api/v1/jobs/{job_id}/retry")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["stage"] == "pending"
+    assert data["error_message"] is None
+
+
+@pytest.mark.asyncio
+async def test_delete_job(client: AsyncClient):
+    create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+    job_id = create_resp.json()["id"]
+
+    delete_resp = await client.delete(f"/api/v1/jobs/{job_id}")
+    assert delete_resp.status_code == 204
+
+    get_resp = await client.get(f"/api/v1/jobs/{job_id}")
+    assert get_resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_job_not_found(client: AsyncClient):
+    response = await client.delete("/api/v1/jobs/99999")
+    assert response.status_code == 404
+

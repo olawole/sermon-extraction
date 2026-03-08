@@ -150,6 +150,29 @@ async def reprocess_job(job_id: int, background_tasks: BackgroundTasks, db: Asyn
     return job
 
 
+@router.post("/{job_id}/retry", response_model=JobResponse)
+async def retry_job(job_id: int, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+    service = JobService(db)
+    try:
+        job = await service.retry_job(job_id)
+    except ValueError as exc:
+        detail = str(exc)
+        if "not found" in detail:
+            raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=400, detail=detail)
+    background_tasks.add_task(run_job_pipeline, job_id)
+    return job
+
+
+@router.delete("/{job_id}", status_code=204)
+async def delete_job(job_id: int, db: AsyncSession = Depends(get_db)):
+    service = JobService(db)
+    try:
+        await service.delete_job(job_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+
 @router.post("/{job_id}/highlights/{highlight_id}/render", response_model=HighlightClipSchema)
 async def render_highlight(
     job_id: int,
