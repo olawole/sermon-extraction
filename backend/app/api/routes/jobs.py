@@ -11,7 +11,7 @@ from app.api.schemas.jobs import (
     TranscriptChunkSchema, SectionSegmentSchema, ServiceSegmentSchema,
     SermonSegmentSchema, HighlightClipSchema, MediaAssetSchema,
 )
-from app.workers.background_worker import run_job_pipeline
+from app.workers.background_worker import run_job_pipeline, run_render_highlight
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -148,3 +148,39 @@ async def reprocess_job(job_id: int, background_tasks: BackgroundTasks, db: Asyn
     job = await service.update_stage(job_id, JobStage.pending)
     background_tasks.add_task(run_job_pipeline, job_id)
     return job
+
+
+@router.post("/{job_id}/highlights/{highlight_id}/render", response_model=HighlightClipSchema)
+async def render_highlight(
+    job_id: int,
+    highlight_id: int,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    service = JobService(db)
+    job = await service.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    highlight = await service.get_highlight(highlight_id)
+    if highlight is None or highlight.job_id != job_id:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+    if highlight.status != HighlightStatus.approved.value:
+        raise HTTPException(status_code=400, detail="Highlight must be approved to render")
+    background_tasks.add_task(run_render_highlight, job_id, highlight_id)
+    return HighlightClipSchema.model_validate(highlight)
+
+
+@router.post("/{job_id}/render-all", response_model=list[HighlightClipSchema])
+async def render_all_highlights(
+    job_id: int,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    service = JobService(db)
+    job = await service.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    highlights = await service.get_approved_highlights(job_id)
+    for h in highlights:
+        background_tasks.add_task(run_render_highlight, job_id, h.id)
+    return [HighlightClipSchema.model_validate(h) for h in highlights]

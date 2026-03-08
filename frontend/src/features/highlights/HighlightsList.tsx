@@ -32,9 +32,10 @@ interface Props {
   highlights: HighlightClip[];
   onApprove?: (id: number) => void;
   onReject?: (id: number) => void;
+  onRender?: (id: number) => void;
 }
 
-const HighlightsList: React.FC<Props> = ({ highlights, onApprove, onReject }) => {
+const HighlightsList: React.FC<Props> = ({ highlights, onApprove, onReject, onRender }) => {
   const [selected, setSelected] = useState<HighlightClip | null>(null);
 
   return (
@@ -73,6 +74,15 @@ const HighlightsList: React.FC<Props> = ({ highlights, onApprove, onReject }) =>
                     Reject
                   </Button>
                 </>
+              )}
+              {h.status === 'approved' && (
+                <Button
+                  size="small"
+                  type="dashed"
+                  onClick={() => onRender?.(h.id)}
+                >
+                  Render
+                </Button>
               )}
             </Space>
           }

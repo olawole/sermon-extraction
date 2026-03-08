@@ -10,3 +10,9 @@ async def run_job_pipeline(job_id: int) -> None:
     async with AsyncSessionLocal() as db:
         orchestrator = JobOrchestrator(db)
         await orchestrator.run_pipeline(job_id)
+
+
+async def run_render_highlight(job_id: int, highlight_id: int) -> None:
+    async with AsyncSessionLocal() as db:
+        orchestrator = JobOrchestrator(db)
+        await orchestrator.render_highlight(job_id, highlight_id)

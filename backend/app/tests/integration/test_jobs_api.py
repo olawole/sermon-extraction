@@ -38,3 +38,93 @@ async def test_list_jobs(client: AsyncClient):
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     assert len(response.json()) >= 1
+
+
+@pytest.mark.asyncio
+async def test_get_transcript(client: AsyncClient):
+    create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+    job_id = create_resp.json()["id"]
+
+    response = await client.get(f"/api/v1/jobs/{job_id}/transcript")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["job_id"] == job_id
+    assert "chunks" in data
+    assert isinstance(data["chunks"], list)
+
+
+@pytest.mark.asyncio
+async def test_get_transcript_not_found(client: AsyncClient):
+    response = await client.get("/api/v1/jobs/99999/transcript")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_segments(client: AsyncClient):
+    create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+    job_id = create_resp.json()["id"]
+
+    response = await client.get(f"/api/v1/jobs/{job_id}/segments")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["job_id"] == job_id
+    assert "section_segments" in data
+    assert "service_segments" in data
+    assert "sermon_segment" in data
+
+
+@pytest.mark.asyncio
+async def test_get_segments_not_found(client: AsyncClient):
+    response = await client.get("/api/v1/jobs/99999/segments")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_highlights(client: AsyncClient):
+    create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+    job_id = create_resp.json()["id"]
+
+    response = await client.get(f"/api/v1/jobs/{job_id}/highlights")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["job_id"] == job_id
+    assert "highlights" in data
+    assert isinstance(data["highlights"], list)
+
+
+@pytest.mark.asyncio
+async def test_get_highlights_not_found(client: AsyncClient):
+    response = await client.get("/api/v1/jobs/99999/highlights")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_assets(client: AsyncClient):
+    create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+    job_id = create_resp.json()["id"]
+
+    response = await client.get(f"/api/v1/jobs/{job_id}/assets")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["job_id"] == job_id
+    assert "assets" in data
+    assert isinstance(data["assets"], list)
+
+
+@pytest.mark.asyncio
+async def test_render_highlight_not_found(client: AsyncClient):
+    create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+    job_id = create_resp.json()["id"]
+
+    response = await client.post(f"/api/v1/jobs/{job_id}/highlights/99999/render")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_render_all_highlights(client: AsyncClient):
+    create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+    job_id = create_resp.json()["id"]
+
+    response = await client.post(f"/api/v1/jobs/{job_id}/render-all")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)

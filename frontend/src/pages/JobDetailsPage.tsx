@@ -9,6 +9,7 @@ import TranscriptViewer from '@/features/transcript/TranscriptViewer';
 import SegmentsTable from '@/features/segments/SegmentsTable';
 import ServiceSummaryCard from '@/features/segments/ServiceSummaryCard';
 import SermonSummaryCard from '@/features/segments/SermonSummaryCard';
+import TimelineView from '@/features/segments/TimelineView';
 import HighlightsList from '@/features/highlights/HighlightsList';
 import AssetListPanel from '@/features/assets/AssetListPanel';
 import LoadingState from '@/components/common/LoadingState';
@@ -23,6 +24,8 @@ import {
   useAssetsQuery,
   useApproveHighlightMutation,
   useRejectHighlightMutation,
+  useRenderHighlightMutation,
+  useRenderAllHighlightsMutation,
 } from '@/hooks/useJobs';
 
 const PageWrapper = styled.div`
@@ -42,6 +45,8 @@ const JobDetailsPage: React.FC = () => {
   const { data: assets } = useAssetsQuery(jobId);
   const approveMutation = useApproveHighlightMutation(jobId);
   const rejectMutation = useRejectHighlightMutation(jobId);
+  const renderMutation = useRenderHighlightMutation(jobId);
+  const renderAllMutation = useRenderAllHighlightsMutation(jobId);
 
   if (jobLoading) return <LoadingState tip="Loading job…" />;
   if (jobError || !job) return <ErrorState message="Failed to load job." />;
@@ -61,6 +66,15 @@ const JobDetailsPage: React.FC = () => {
       label: 'Segments',
       children: segments ? (
         <Space direction="vertical" style={{ width: '100%' }}>
+          {job.duration_seconds && (
+            <TimelineView
+              totalDuration={job.duration_seconds}
+              sectionSegments={segments.section_segments}
+              serviceSegments={segments.service_segments}
+              sermonSegment={segments.sermon_segment}
+              highlights={highlights?.highlights}
+            />
+          )}
           {segments.service_segments?.length > 0 && (
             <ServiceSummaryCard services={segments.service_segments} />
           )}
@@ -81,11 +95,25 @@ const JobDetailsPage: React.FC = () => {
       key: 'highlights',
       label: 'Highlights',
       children: highlights?.highlights?.length ? (
-        <HighlightsList
-          highlights={highlights.highlights}
-          onApprove={(hId) => approveMutation.mutate(hId)}
-          onReject={(hId) => rejectMutation.mutate(hId)}
-        />
+        <>
+          {highlights.highlights.some((h) => h.status === 'approved') && (
+            <Space style={{ marginBottom: 12 }}>
+              <Button
+                type="primary"
+                loading={renderAllMutation.isPending}
+                onClick={() => renderAllMutation.mutate()}
+              >
+                Render All Approved
+              </Button>
+            </Space>
+          )}
+          <HighlightsList
+            highlights={highlights.highlights}
+            onApprove={(hId) => approveMutation.mutate(hId)}
+            onReject={(hId) => rejectMutation.mutate(hId)}
+            onRender={(hId) => renderMutation.mutate(hId)}
+          />
+        </>
       ) : (
         <EmptyState description="Highlights not yet available." />
       ),

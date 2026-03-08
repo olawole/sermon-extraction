@@ -54,6 +54,14 @@ export const rejectHighlight = async (jobId: number, highlightId: number): Promi
   await client.post(`/jobs/${jobId}/highlights/${highlightId}/reject`);
 };
 
+export const renderHighlight = async (jobId: number, highlightId: number): Promise<void> => {
+  await client.post(`/jobs/${jobId}/highlights/${highlightId}/render`);
+};
+
+export const renderAllHighlights = async (jobId: number): Promise<void> => {
+  await client.post(`/jobs/${jobId}/render-all`);
+};
+
 export const reprocessJob = async (jobId: number): Promise<Job> => {
   const { data } = await client.post<Job>(`/jobs/${jobId}/reprocess`);
   return data;

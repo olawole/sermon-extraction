@@ -218,3 +218,47 @@ class JobOrchestrator:
             await self.db.commit()
 
         await self.job_service.update_stage(job_id, JobStage.completed)
+
+    async def render_highlight(self, job_id: int, highlight_id: int) -> None:
+        try:
+            await self._render_highlight(job_id, highlight_id)
+        except Exception as exc:
+            logger.exception(f"Render failed for highlight {highlight_id}: {exc}")
+
+    async def _render_highlight(self, job_id: int, highlight_id: int) -> None:
+        highlight = await self.job_service.get_highlight(highlight_id)
+        if highlight is None:
+            raise ValueError(f"Highlight {highlight_id} not found")
+
+        job_dir = self.storage.job_dir(job_id)
+        source_path = os.path.join(job_dir, "video.mp4")
+        sermon_path = os.path.join(job_dir, "sermon.mp4")
+        srt_path = os.path.join(job_dir, "sermon.srt")
+
+        video_source = sermon_path if os.path.exists(sermon_path) else source_path
+        subtitle_source = srt_path if os.path.exists(srt_path) else None
+
+        output_filename = f"highlight_{highlight_id}_vertical.mp4"
+        output_path = os.path.join(job_dir, output_filename)
+
+        if not os.path.exists(video_source):
+            logger.warning(f"Source video not found for job {job_id}; skipping render")
+            return
+
+        await self.video_cutter.render_vertical(
+            source_path=video_source,
+            start=highlight.start_seconds,
+            end=highlight.end_seconds,
+            output_path=output_path,
+            burn_subtitles_path=subtitle_source,
+        )
+
+        asset = MediaAsset(
+            job_id=job_id,
+            asset_type=AssetType.highlight_clip.value,
+            file_path=output_path,
+            file_name=output_filename,
+            format="mp4",
+            duration_seconds=highlight.end_seconds - highlight.start_seconds,
+        )
+        await self.job_service.attach_rendered_asset(highlight_id, asset)
