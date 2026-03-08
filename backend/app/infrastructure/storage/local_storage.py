@@ -1,6 +1,6 @@
 from __future__ import annotations
-import os
 import shutil
+from pathlib import Path
 from app.core.config import settings
 
 
@@ -9,14 +9,14 @@ class LocalStorageService:
         self.root = root
 
     def job_dir(self, job_id: int) -> str:
-        path = os.path.join(self.root, f"job_{job_id}")
-        os.makedirs(path, exist_ok=True)
-        return path
+        path = Path(self.root) / f"job_{job_id}"
+        path.mkdir(parents=True, exist_ok=True)
+        return str(path)
 
     def asset_path(self, job_id: int, filename: str) -> str:
-        return os.path.join(self.job_dir(job_id), filename)
+        return str(Path(self.job_dir(job_id)) / filename)
 
     def delete_job_files(self, job_id: int) -> None:
-        path = os.path.join(self.root, f"job_{job_id}")
-        if os.path.exists(path):
+        path = Path(self.root) / f"job_{job_id}"
+        if path.exists():
             shutil.rmtree(path)

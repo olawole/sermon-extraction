@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import io
+from pathlib import Path
 import openai
 from app.core.config import settings
 from app.infrastructure.ai.transcription.base import TranscriptionProvider, TranscriptChunkData
@@ -12,10 +13,15 @@ class WhisperTranscriptionProvider(TranscriptionProvider):
         self._model = settings.whisper_model
 
     async def transcribe(self, audio_path: str, duration_seconds: float = 3600.0) -> list[TranscriptChunkData]:
+        normalized_path = str(Path(audio_path))
+        if not Path(audio_path).exists():
+            raise FileNotFoundError(
+                f"Audio file not found at {normalized_path}; download or extraction may have failed"
+            )
         loop = asyncio.get_event_loop()
-        audio_bytes = await loop.run_in_executor(None, lambda: open(audio_path, "rb").read())
+        audio_bytes = await loop.run_in_executor(None, lambda: open(normalized_path, "rb").read())
         audio_file = io.BytesIO(audio_bytes)
-        audio_file.name = audio_path
+        audio_file.name = normalized_path
         response = await self._client.audio.transcriptions.create(
             model=self._model,
             file=audio_file,

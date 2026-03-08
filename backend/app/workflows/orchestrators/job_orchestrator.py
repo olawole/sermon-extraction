@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-import os
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.domain.enums.enums import JobStage, AssetType, HighlightStatus
@@ -68,19 +68,24 @@ class JobOrchestrator:
             job.duration_seconds = float(raw_duration) if raw_duration is not None else DEFAULT_VIDEO_DURATION_SECONDS
         except Exception:
             # Use fake data in test/dev mode
-            video_path = os.path.join(job_dir, "video.mp4")
+            video_path = str(Path(job_dir) / "video.mp4")
             job.title = job.title or "Test Video"
             job.duration_seconds = job.duration_seconds or DEFAULT_VIDEO_DURATION_SECONDS
         await self.db.commit()
 
         # Stage 2: Extract Audio
         await self.job_service.update_stage(job_id, JobStage.audio_extracted)
-        audio_path = os.path.join(job_dir, "audio.wav")
-        if os.path.exists(video_path):
+        audio_path = str(Path(job_dir) / "audio.wav")
+        if Path(video_path).exists():
             try:
                 await self.audio_extractor.extract_audio(video_path, audio_path)
             except Exception:
                 pass
+
+        if not Path(audio_path).exists():
+            raise RuntimeError(
+                f"Audio file not found at {audio_path}; download or extraction may have failed"
+            )
 
         # Stage 3: Transcribe
         await self.job_service.update_stage(job_id, JobStage.transcribing)
@@ -173,10 +178,10 @@ class JobOrchestrator:
 
         # Stage 11: Export sermon
         await self.job_service.update_stage(job_id, JobStage.exporting_sermon)
-        if sermon_result and os.path.exists(video_path):
-            sermon_video_path = os.path.join(job_dir, "sermon.mp4")
-            srt_path = os.path.join(job_dir, "sermon.srt")
-            vtt_path = os.path.join(job_dir, "sermon.vtt")
+        if sermon_result and Path(video_path).exists():
+            sermon_video_path = str(Path(job_dir) / "sermon.mp4")
+            srt_path = str(Path(job_dir) / "sermon.srt")
+            vtt_path = str(Path(job_dir) / "sermon.vtt")
             try:
                 await self.video_cutter.cut_segment(video_path, sermon_result.start_seconds, sermon_result.end_seconds, sermon_video_path)
                 self.subtitle_generator.generate_srt(transcript_data, sermon_result.start_seconds, srt_path)
@@ -230,17 +235,17 @@ class JobOrchestrator:
             raise ValueError(f"Highlight {highlight_id} not found")
 
         job_dir = self.storage.job_dir(job_id)
-        source_path = os.path.join(job_dir, "video.mp4")
-        sermon_path = os.path.join(job_dir, "sermon.mp4")
-        srt_path = os.path.join(job_dir, "sermon.srt")
+        source_path = str(Path(job_dir) / "video.mp4")
+        sermon_path = str(Path(job_dir) / "sermon.mp4")
+        srt_path = str(Path(job_dir) / "sermon.srt")
 
-        video_source = sermon_path if os.path.exists(sermon_path) else source_path
-        subtitle_source = srt_path if os.path.exists(srt_path) else None
+        video_source = sermon_path if Path(sermon_path).exists() else source_path
+        subtitle_source = srt_path if Path(srt_path).exists() else None
 
         output_filename = f"highlight_{highlight_id}_vertical.mp4"
-        output_path = os.path.join(job_dir, output_filename)
+        output_path = str(Path(job_dir) / output_filename)
 
-        if not os.path.exists(video_source):
+        if not Path(video_source).exists():
             logger.warning(f"Source video not found for job {job_id}; skipping render")
             return
 
