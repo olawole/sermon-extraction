@@ -1,0 +1,6 @@
+{
+  "project_roots": {
+    "backend": "backend",
+    "frontend": "frontend"
+  }
+}
