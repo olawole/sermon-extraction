@@ -1,6 +1,14 @@
 import pytest
 import pytest_asyncio
+from unittest.mock import patch
 from httpx import AsyncClient
+
+
+@pytest.fixture(autouse=True)
+def mock_background_tasks():
+    with patch("app.api.routes.jobs.run_job_pipeline"), \
+         patch("app.api.routes.jobs.run_render_highlight"):
+        yield
 
 
 @pytest.mark.asyncio
@@ -138,15 +146,12 @@ async def test_retry_job_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_retry_job_not_failed(client: AsyncClient):
-    from unittest.mock import patch
+    create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+    job_id = create_resp.json()["id"]
 
-    with patch("app.api.routes.jobs.run_job_pipeline"):
-        create_resp = await client.post("/api/v1/jobs/", json={"youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
-        job_id = create_resp.json()["id"]
-
-        # Job remains in pending state — retry should return 400
-        response = await client.post(f"/api/v1/jobs/{job_id}/retry")
-        assert response.status_code == 400
+    # Job remains in pending state — retry should return 400
+    response = await client.post(f"/api/v1/jobs/{job_id}/retry")
+    assert response.status_code == 400
 
 
 @pytest.mark.asyncio

@@ -22,6 +22,7 @@ export interface Job {
   title: string | null;
   duration_seconds: number | null;
   stage: JobStage;
+  progress?: number;
   error_message: string | null;
   created_at: string;
   updated_at: string;
@@ -79,6 +80,7 @@ export interface HighlightClip {
 
 export interface MediaAsset {
   id: number;
+  job_id: number;
   asset_type: AssetType;
   file_path: string;
   file_name: string;
@@ -107,4 +109,14 @@ export interface HighlightsResponse {
 export interface AssetListResponse {
   job_id: number;
   assets: MediaAsset[];
+}
+
+export interface UpdateSermonRequest {
+  start_seconds: number;
+  end_seconds: number;
+}
+
+export interface UpdateHighlightRequest {
+  start_seconds: number;
+  end_seconds: number;
 }

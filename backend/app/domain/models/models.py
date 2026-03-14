@@ -21,6 +21,7 @@ class VideoJob(Base):
     youtube_url: Mapped[str] = mapped_column(String, nullable=False)
     title: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     duration_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    progress: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     stage: Mapped[str] = mapped_column(String, default=JobStage.pending.value, nullable=False)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

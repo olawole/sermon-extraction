@@ -8,9 +8,20 @@ class CreateJobRequest(BaseModel):
     youtube_url: HttpUrl
 
 
+class UpdateSermonRequest(BaseModel):
+    start_seconds: float
+    end_seconds: float
+
+
+class UpdateHighlightRequest(BaseModel):
+    start_seconds: float
+    end_seconds: float
+
+
 class MediaAssetSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    job_id: int
     asset_type: str
     file_path: str
     file_name: str
@@ -80,6 +91,7 @@ class JobResponse(BaseModel):
     youtube_url: str
     title: Optional[str] = None
     duration_seconds: Optional[float] = None
+    progress: Optional[float] = None
     stage: str
     error_message: Optional[str] = None
     created_at: datetime

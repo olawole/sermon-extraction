@@ -1,6 +1,11 @@
 import React from 'react';
-import { Card, Descriptions, Tag, Alert, Steps } from 'antd';
+import { Card, Descriptions, Tag, Alert, Steps, Collapse, Typography, Button, Progress } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import type { Job, JobStage } from '@/types';
+import { useRetryJobMutation } from '@/hooks/useJobs';
+
+const { Panel } = Collapse;
+const { Paragraph, Text } = Typography;
 
 const stageColor: Record<JobStage, string> = {
   pending: 'default', downloading: 'processing', audio_extracted: 'processing',
@@ -40,11 +45,57 @@ function formatSeconds(s: number) {
 
 const JobStatusCard: React.FC<{ job: Job }> = ({ job }) => {
   const stepStatus = job.stage === 'failed' ? 'error' : job.stage === 'completed' ? 'finish' : 'process';
+  const retryMutation = useRetryJobMutation();
+
+  const [errorMessage, ...tracebackLines] = job.error_message?.split('\n\n') ?? [];
+  const traceback = tracebackLines.join('\n\n');
 
   return (
-    <Card title={job.title ?? 'Processing…'} style={{ marginBottom: 16 }}>
+    <Card 
+      title={job.title ?? 'Processing…'} 
+      style={{ marginBottom: 16 }}
+      extra={job.stage === 'failed' && (
+        <Button 
+          type="primary" 
+          danger 
+          size="small" 
+          icon={<ReloadOutlined />} 
+          onClick={() => retryMutation.mutate(job.id)}
+          loading={retryMutation.isPending}
+        >
+          Retry
+        </Button>
+      )}
+    >
       {job.error_message && (
-        <Alert type="error" message={job.error_message} style={{ marginBottom: 16 }} />
+        <div style={{ marginBottom: 16 }}>
+          <Alert
+            type="error"
+            message="Job Failed"
+            description={
+              <div style={{ marginTop: 8 }}>
+                <Paragraph strong>{errorMessage}</Paragraph>
+                {traceback && (
+                  <Collapse ghost size="small">
+                    <Panel header="Show Traceback" key="1">
+                      <pre style={{ 
+                        fontSize: '11px', 
+                        backgroundColor: '#fff1f0', 
+                        padding: '8px', 
+                        borderRadius: '4px',
+                        overflowX: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-all'
+                      }}>
+                        {traceback}
+                      </pre>
+                    </Panel>
+                  </Collapse>
+                )}
+              </div>
+            }
+          />
+        </div>
       )}
       <Steps
         current={getCurrentStep(job.stage)}
@@ -65,6 +116,14 @@ const JobStatusCard: React.FC<{ job: Job }> = ({ job }) => {
           <a href={job.youtube_url} target="_blank" rel="noreferrer">YouTube</a>
         </Descriptions.Item>
       </Descriptions>
+      {job.progress !== undefined && job.stage !== 'completed' && job.stage !== 'failed' && (
+        <div style={{ marginTop: 16 }}>
+          <Text type="secondary" style={{ fontSize: '12px', marginBottom: 4, display: 'block' }}>
+            Overall Progress
+          </Text>
+          <Progress percent={Math.round(job.progress)} status="active" />
+        </div>
+      )}
     </Card>
   );
 };

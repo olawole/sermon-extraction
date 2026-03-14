@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+from typing import Optional
 from app.infrastructure.ai.transcription.base import TranscriptChunkData
 
 
@@ -25,10 +26,18 @@ class SubtitleGenerator:
         chunks: list[TranscriptChunkData],
         sermon_start: float,
         output_path: str,
+        sermon_end: Optional[float] = None,
     ) -> str:
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
         lines: list[str] = []
-        for i, chunk in enumerate(chunks, 1):
+        
+        filtered_chunks = [
+            c for c in chunks 
+            if c.start_seconds >= sermon_start 
+            and (sermon_end is None or c.end_seconds <= sermon_end)
+        ]
+
+        for i, chunk in enumerate(filtered_chunks, 1):
             start = max(0.0, chunk.start_seconds - sermon_start)
             end = max(0.0, chunk.end_seconds - sermon_start)
             lines.append(str(i))
@@ -45,10 +54,18 @@ class SubtitleGenerator:
         chunks: list[TranscriptChunkData],
         sermon_start: float,
         output_path: str,
+        sermon_end: Optional[float] = None,
     ) -> str:
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
         lines: list[str] = ["WEBVTT", ""]
-        for chunk in chunks:
+
+        filtered_chunks = [
+            c for c in chunks 
+            if c.start_seconds >= sermon_start 
+            and (sermon_end is None or c.end_seconds <= sermon_end)
+        ]
+
+        for chunk in filtered_chunks:
             start = max(0.0, chunk.start_seconds - sermon_start)
             end = max(0.0, chunk.end_seconds - sermon_start)
             lines.append(f"{_format_vtt_time(start)} --> {_format_vtt_time(end)}")

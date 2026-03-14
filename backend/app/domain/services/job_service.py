@@ -25,7 +25,7 @@ class JobService:
         result = await self.db.execute(select(VideoJob).where(VideoJob.id == job_id))
         return result.scalar_one_or_none()
 
-    async def update_stage(self, job_id: int, stage: JobStage, error: Optional[str] = None) -> VideoJob:
+    async def update_stage(self, job_id: int, stage: JobStage, error: Optional[str] = None, progress: Optional[float] = None) -> VideoJob:
         job = await self.get_job(job_id)
         if job is None:
             raise ValueError(f"Job {job_id} not found")
@@ -33,6 +33,8 @@ class JobService:
         job.updated_at = datetime.now(timezone.utc)
         if error is not None:
             job.error_message = error
+        if progress is not None:
+            job.progress = progress
         await self.db.commit()
         await self.db.refresh(job)
         return job
@@ -77,6 +79,10 @@ class JobService:
         )
         return list(result.scalars().all())
 
+    async def get_asset(self, asset_id: int) -> Optional[MediaAsset]:
+        result = await self.db.execute(select(MediaAsset).where(MediaAsset.id == asset_id))
+        return result.scalar_one_or_none()
+
     async def update_highlight_status(self, highlight_id: int, status: HighlightStatus) -> HighlightClip:
         result = await self.db.execute(select(HighlightClip).where(HighlightClip.id == highlight_id))
         highlight = result.scalar_one_or_none()
@@ -86,6 +92,30 @@ class JobService:
         await self.db.commit()
         await self.db.refresh(highlight)
         return highlight
+
+    async def update_highlight_segment(self, highlight_id: int, start_seconds: float, end_seconds: float) -> HighlightClip:
+        result = await self.db.execute(select(HighlightClip).where(HighlightClip.id == highlight_id))
+        highlight = result.scalar_one_or_none()
+        if highlight is None:
+            raise ValueError(f"Highlight {highlight_id} not found")
+        highlight.start_seconds = start_seconds
+        highlight.end_seconds = end_seconds
+        highlight.updated_at = datetime.now(timezone.utc)
+        await self.db.commit()
+        await self.db.refresh(highlight)
+        return highlight
+
+    async def update_sermon_segment(self, job_id: int, start_seconds: float, end_seconds: float) -> SermonSegment:
+        result = await self.db.execute(select(SermonSegment).where(SermonSegment.job_id == job_id))
+        sermon_segment = result.scalar_one_or_none()
+        if sermon_segment is None:
+            raise ValueError(f"Sermon segment for job {job_id} not found")
+        sermon_segment.start_seconds = start_seconds
+        sermon_segment.end_seconds = end_seconds
+        sermon_segment.updated_at = datetime.now(timezone.utc)
+        await self.db.commit()
+        await self.db.refresh(sermon_segment)
+        return sermon_segment
 
     async def get_highlight(self, highlight_id: int) -> Optional[HighlightClip]:
         result = await self.db.execute(select(HighlightClip).where(HighlightClip.id == highlight_id))

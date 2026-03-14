@@ -5,6 +5,10 @@ import type {
   SegmentsResponse,
   HighlightsResponse,
   AssetListResponse,
+  UpdateSermonRequest,
+  UpdateHighlightRequest,
+  SermonSegment,
+  HighlightClip,
 } from '@/types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -74,4 +78,24 @@ export const retryJob = async (jobId: number): Promise<Job> => {
 
 export const deleteJob = async (jobId: number): Promise<void> => {
   await client.delete(`/jobs/${jobId}`);
+};
+
+export const updateSermon = async (
+  jobId: number,
+  payload: UpdateSermonRequest
+): Promise<SermonSegment> => {
+  const { data } = await client.put<SermonSegment>(`/jobs/${jobId}/sermon`, payload);
+  return data;
+};
+
+export const updateHighlight = async (
+  jobId: number,
+  highlightId: number,
+  payload: UpdateHighlightRequest
+): Promise<HighlightClip> => {
+  const { data } = await client.put<HighlightClip>(
+    `/jobs/${jobId}/highlights/${highlightId}`,
+    payload
+  );
+  return data;
 };

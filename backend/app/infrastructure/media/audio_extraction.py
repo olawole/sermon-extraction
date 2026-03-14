@@ -8,19 +8,24 @@ logger = logging.getLogger(__name__)
 
 
 class AudioExtractionService:
-    async def extract_audio(self, video_path: str, output_path: str) -> str:
+    async def extract_audio(self, video_path: str, output_path: str, log_path: str | os.PathLike | None = None) -> str:
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
         cmd = [
             settings.ffmpeg_path, "-y",
             "-i", video_path,
             "-vn",
-            "-acodec", "pcm_s16le",
+            "-acodec", "libmp3lame",
+            "-b:a", "32k",
             "-ar", "16000",
             "-ac", "1",
             output_path,
         ]
         try:
-            _, stderr, returncode = await run_subprocess(cmd)
+            _, stderr, returncode = await run_subprocess(
+                cmd,
+                timeout=600,  # 10 minutes timeout for audio extraction
+                log_path=log_path,
+            )
             if returncode != 0:
                 raise RuntimeError(f"ffmpeg audio extraction failed: {stderr.decode()[:500]}")
             return output_path

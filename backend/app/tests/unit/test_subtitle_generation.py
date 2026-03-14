@@ -39,13 +39,21 @@ def test_vtt_generation():
         assert "Hello world" in content
 
 
-def test_srt_relative_timestamps():
+def test_srt_with_sermon_end():
     generator = SubtitleGenerator()
-    chunks = [TranscriptChunkData(chunk_index=0, start_seconds=3600.0, end_seconds=3610.0, text="Late content")]
+    chunks = [
+        TranscriptChunkData(chunk_index=0, start_seconds=100.0, end_seconds=110.0, text="Keep"),
+        TranscriptChunkData(chunk_index=1, start_seconds=110.0, end_seconds=120.0, text="Keep also"),
+        TranscriptChunkData(chunk_index=2, start_seconds=120.0, end_seconds=130.0, text="Discard"),
+    ]
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "test.srt")
-        generator.generate_srt(chunks, sermon_start=3600.0, output_path=path)
+        # sermon_end is 120.0, so the third chunk (start=120, end=130) should be discarded 
+        # because its end_seconds (130) > sermon_end (120).
+        generator.generate_srt(chunks, sermon_start=100.0, output_path=path, sermon_end=120.0)
         with open(path) as f:
             content = f.read()
-        # Timestamps should be relative (0s from sermon start)
-        assert "00:00:00,000" in content
+        assert "Keep" in content
+        assert "Keep also" in content
+        assert "Discard" not in content
+

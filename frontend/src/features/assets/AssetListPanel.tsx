@@ -53,7 +53,7 @@ const AssetListPanel: React.FC<{ assets: MediaAsset[] }> = ({ assets }) => (
             key="dl"
             icon={<DownloadOutlined />}
             size="small"
-            href={`${BASE_URL}/files/${encodeURIComponent(asset.file_name)}`}
+            href={`${BASE_URL}/jobs/${asset.job_id}/assets/${asset.id}/download`}
             target="_blank"
             rel="noreferrer"
           >

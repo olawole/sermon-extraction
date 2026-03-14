@@ -72,6 +72,7 @@ const JobDetailsPage: React.FC = () => {
         <Space direction="vertical" style={{ width: '100%' }}>
           {job.duration_seconds && (
             <TimelineView
+              jobId={jobId}
               totalDuration={job.duration_seconds}
               sectionSegments={segments.section_segments}
               serviceSegments={segments.service_segments}
@@ -112,6 +113,7 @@ const JobDetailsPage: React.FC = () => {
             </Space>
           )}
           <HighlightsList
+            jobId={jobId}
             highlights={highlights.highlights}
             onApprove={(hId) => approveMutation.mutate(hId)}
             onReject={(hId) => rejectMutation.mutate(hId)}

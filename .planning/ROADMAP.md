@@ -14,12 +14,19 @@
 
 ## Phase 3: AI Integration & Refinement (6-10 Weeks)
 **Goal:** Transition to high-accuracy transcription and classification.
-- [ ] OpenAI Whisper/GPT-4o-mini integration and testing.
-- [ ] Classification prompt engineering for better sermon detection.
-- [ ] Subtitle alignment verification.
+- [x] OpenAI Whisper/GPT-4o-mini integration and testing.
+- [x] Classification prompt engineering for better sermon detection.
+- [x] Subtitle alignment verification.
 
 ## Phase 4: Enhanced User Experience (10-14 Weeks)
 **Goal:** Provide manual controls and advanced media features.
-- [ ] Timeline navigation and manual segment adjustment.
-- [ ] Improved vertical video rendering (backgrounds/overlays).
-- [ ] Multi-provider support (Anthropic, Deepgram).
+- [x] Timeline navigation and manual segment adjustment.
+- [x] Improved vertical video rendering (blurred backgrounds).
+- [x] Multi-provider support (Anthropic, Deepgram stubs).
+
+## Phase 5: Advanced Distribution & Polish (14-18 Weeks)
+**Goal:** Multi-user support, direct publishing, and visual styling.
+- [ ] JWT authentication and user workspaces.
+- [ ] Social media publishing (Instagram/TikTok).
+- [ ] Stylized captions and B-roll suggestions.
+- [ ] Storage cleanup and rate limiting.

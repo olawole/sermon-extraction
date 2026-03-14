@@ -18,17 +18,23 @@ class VideoIngestionService:
         ]
         return any(re.search(p, url) for p in patterns)
 
-    async def download(self, url: str, output_dir: str) -> dict[str, Any]:
+    async def download(self, url: str, output_dir: str, log_path: str | os.PathLike | None = None) -> dict[str, Any]:
         os.makedirs(output_dir, exist_ok=True)
         cmd = [
             settings.ytdlp_path,
+            "-f", settings.ytdlp_format,
             "--no-playlist",
             "--print-json",
             "--output", os.path.join(output_dir, "%(id)s.%(ext)s"),
             url,
         ]
         try:
-            stdout, stderr, returncode = await run_subprocess(cmd)
+            stdout, stderr, returncode = await run_subprocess(
+                cmd,
+                timeout=2700,  # 45 minutes timeout for downloads
+                retries=3,    # Retry 3 times for transient network issues
+                log_path=log_path,
+            )
             if returncode != 0:
                 raise RuntimeError(f"yt-dlp failed: {stderr.decode()[:500]}")
             info = json.loads(stdout.decode().strip().splitlines()[-1])

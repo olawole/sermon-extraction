@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { Card, Tag, Button, Space, Typography, Progress } from 'antd';
+import { Card, Tag, Button, Space, Typography, Progress, Modal } from 'antd';
+import { PlayCircleOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import type { HighlightClip, HighlightStatus } from '@/types';
 import { fmt } from '@/lib/formatTime';
 import HighlightDetailsDrawer from './HighlightDetailsDrawer';
+import { useAssetsQuery } from '@/hooks/useJobs';
 
 const { Text } = Typography;
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 const statusColor: Record<HighlightStatus, string> = {
   pending: 'default',
@@ -29,14 +33,24 @@ const TranscriptPreview = styled.div`
 `;
 
 interface Props {
+  jobId: number;
   highlights: HighlightClip[];
   onApprove?: (id: number) => void;
   onReject?: (id: number) => void;
   onRender?: (id: number) => void;
 }
 
-const HighlightsList: React.FC<Props> = ({ highlights, onApprove, onReject, onRender }) => {
+const HighlightsList: React.FC<Props> = ({ jobId, highlights, onApprove, onReject, onRender }) => {
   const [selected, setSelected] = useState<HighlightClip | null>(null);
+  const [preview, setPreview] = useState<HighlightClip | null>(null);
+  
+  const { data: assetsData } = useAssetsQuery(jobId);
+  const assets = assetsData?.assets || [];
+  const sourceVideo = assets.find((a) => a.asset_type === 'source_video');
+
+  const videoUrl = sourceVideo 
+    ? `${BASE_URL}/jobs/${jobId}/assets/${sourceVideo.id}/download`
+    : null;
 
   return (
     <>
@@ -54,6 +68,15 @@ const HighlightsList: React.FC<Props> = ({ highlights, onApprove, onReject, onRe
           }
           extra={
             <Space>
+              {videoUrl && (
+                <Button
+                  size="small"
+                  icon={<PlayCircleOutlined />}
+                  onClick={() => setPreview(h)}
+                >
+                  Preview
+                </Button>
+              )}
               <Button size="small" onClick={() => setSelected(h)}>
                 Details
               </Button>
@@ -106,6 +129,27 @@ const HighlightsList: React.FC<Props> = ({ highlights, onApprove, onReject, onRe
           </Space>
         </Card>
       ))}
+
+      <Modal
+        title={`Preview: ${preview?.title}`}
+        open={!!preview}
+        onCancel={() => setPreview(null)}
+        footer={null}
+        width={800}
+        destroyOnClose
+      >
+        {preview && videoUrl && (
+          <video
+            src={`${videoUrl}#t=${preview.start_seconds}`}
+            controls
+            autoPlay
+            style={{ width: '100%', maxHeight: '450px' }}
+          >
+            Your browser does not support the video tag.
+          </video>
+        )}
+      </Modal>
+
       {selected && (
         <HighlightDetailsDrawer
           highlight={selected}

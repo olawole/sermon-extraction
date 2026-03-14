@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/services/api';
+import type { UpdateSermonRequest, UpdateHighlightRequest } from '@/types';
 
 export const useJobsQuery = () =>
   useQuery({ queryKey: ['jobs'], queryFn: api.listJobs });
@@ -96,6 +97,34 @@ export const useDeleteJobMutation = () => {
     onSuccess: (_data, jobId) => {
       qc.invalidateQueries({ queryKey: ['jobs'] });
       qc.removeQueries({ queryKey: ['job', jobId] });
+    },
+  });
+};
+
+export const useUpdateSermonMutation = (jobId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateSermonRequest) => api.updateSermon(jobId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['segments', jobId] });
+      qc.invalidateQueries({ queryKey: ['job', jobId] });
+    },
+  });
+};
+
+export const useUpdateHighlightMutation = (jobId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      highlightId,
+      payload,
+    }: {
+      highlightId: number;
+      payload: UpdateHighlightRequest;
+    }) => api.updateHighlight(jobId, highlightId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['highlights', jobId] });
+      qc.invalidateQueries({ queryKey: ['job', jobId] });
     },
   });
 };

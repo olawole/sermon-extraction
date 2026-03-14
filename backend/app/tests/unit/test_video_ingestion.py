@@ -19,9 +19,11 @@ async def test_download_uses_filename_field_when_present(tmp_path):
     }
     stdout = json.dumps(info).encode()
 
-    mock_proc = MagicMock()
+    mock_proc = AsyncMock()
     mock_proc.returncode = 0
-    mock_proc.communicate = AsyncMock(return_value=(stdout, b""))
+    mock_proc.wait.return_value = 0
+    mock_proc.stdout.readline.side_effect = [stdout, b""]
+    mock_proc.stderr.readline.return_value = b""
 
     with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=mock_proc)):
         service = VideoIngestionService()
@@ -45,9 +47,11 @@ async def test_download_falls_back_to_reconstructed_path_when_filename_missing(t
     }
     stdout = json.dumps(info).encode()
 
-    mock_proc = MagicMock()
+    mock_proc = AsyncMock()
     mock_proc.returncode = 0
-    mock_proc.communicate = AsyncMock(return_value=(stdout, b""))
+    mock_proc.wait.return_value = 0
+    mock_proc.stdout.readline.side_effect = [stdout, b""]
+    mock_proc.stderr.readline.return_value = b""
 
     with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=mock_proc)):
         service = VideoIngestionService()
@@ -73,14 +77,17 @@ async def test_download_raises_when_ytdlp_fails(tmp_path):
     """Non-zero yt-dlp exit code raises RuntimeError."""
     from app.infrastructure.youtube.ingestion import VideoIngestionService
 
-    mock_proc = MagicMock()
+    mock_proc = AsyncMock()
     mock_proc.returncode = 1
-    mock_proc.communicate = AsyncMock(return_value=(b"", b"some error"))
+    mock_proc.wait.return_value = 1
+    mock_proc.stdout.readline.return_value = b""
+    mock_proc.stderr.readline.side_effect = [b"some error", b""]
 
     with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=mock_proc)):
-        service = VideoIngestionService()
-        with pytest.raises(RuntimeError, match="yt-dlp failed"):
-            await service.download("https://youtube.com/watch?v=abc123", str(tmp_path))
+        with patch("asyncio.sleep", AsyncMock()):  # Speed up retries
+            service = VideoIngestionService()
+            with pytest.raises(RuntimeError, match="yt-dlp failed"):
+                await service.download("https://youtube.com/watch?v=abc123", str(tmp_path))
 
 
 @pytest.mark.asyncio
@@ -110,3 +117,34 @@ async def test_download_falls_back_when_create_subprocess_not_implemented(tmp_pa
     assert result["file_path"] == str(tmp_path / "abc123.mp4")
     assert result["title"] == "Fallback Video"
     assert result["duration"] == 90
+
+
+@pytest.mark.asyncio
+async def test_download_includes_format_flag(tmp_path):
+    """The yt-dlp command correctly includes the -f flag with configured format."""
+    from app.infrastructure.youtube.ingestion import VideoIngestionService
+    from app.core.config import settings
+
+    info = {
+        "id": "abc123",
+        "ext": "mp4",
+        "title": "Test Video",
+        "duration": 120,
+        "_filename": str(tmp_path / "abc123.mp4"),
+    }
+    stdout = json.dumps(info).encode()
+
+    mock_proc = AsyncMock()
+    mock_proc.returncode = 0
+    mock_proc.wait.return_value = 0
+    mock_proc.stdout.readline.side_effect = [stdout, b""]
+    mock_proc.stderr.readline.return_value = b""
+
+    with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=mock_proc)) as mock_exec:
+        service = VideoIngestionService()
+        await service.download("https://youtube.com/watch?v=abc123", str(tmp_path))
+
+        # Check that -f and the format string were in the arguments
+        args, _ = mock_exec.call_args
+        assert "-f" in args
+        assert settings.ytdlp_format in args

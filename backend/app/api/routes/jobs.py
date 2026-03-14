@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.db.session import get_db
 from app.domain.services.job_service import JobService
@@ -10,11 +11,35 @@ from app.api.schemas.jobs import (
     SegmentsResponse, HighlightsResponse, AssetListResponse,
     TranscriptChunkSchema, SectionSegmentSchema, ServiceSegmentSchema,
     SermonSegmentSchema, HighlightClipSchema, MediaAssetSchema,
+    UpdateSermonRequest, UpdateHighlightRequest,
 )
 from app.workers.background_worker import run_job_pipeline, run_render_highlight
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["jobs"])
+
+
+@router.get("/{job_id}/assets/{asset_id}/download")
+async def download_asset(
+    job_id: int,
+    asset_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    service = JobService(db)
+    asset = await service.get_asset(asset_id)
+    if asset is None or asset.job_id != job_id:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    
+    file_path = Path(asset.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    
+    return FileResponse(
+        path=file_path,
+        filename=asset.file_name,
+        media_type="application/octet-stream"
+    )
 
 
 @router.post("/", response_model=JobResponse, status_code=201)
@@ -117,6 +142,37 @@ async def get_assets(job_id: int, db: AsyncSession = Depends(get_db)):
         job_id=job_id,
         assets=[MediaAssetSchema.model_validate(a) for a in assets],
     )
+
+
+@router.put("/{job_id}/sermon", response_model=SermonSegmentSchema)
+async def update_sermon_segment(
+    job_id: int,
+    request: UpdateSermonRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = JobService(db)
+    try:
+        sermon = await service.update_sermon_segment(job_id, request.start_seconds, request.end_seconds)
+        return SermonSegmentSchema.model_validate(sermon)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.put("/{job_id}/highlights/{highlight_id}", response_model=HighlightClipSchema)
+async def update_highlight_segment(
+    job_id: int,
+    highlight_id: int,
+    request: UpdateHighlightRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = JobService(db)
+    try:
+        highlight = await service.update_highlight_segment(highlight_id, request.start_seconds, request.end_seconds)
+        if highlight.job_id != job_id:
+             raise HTTPException(status_code=404, detail="Highlight not found for this job")
+        return HighlightClipSchema.model_validate(highlight)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 @router.post("/{job_id}/highlights/{highlight_id}/approve", response_model=HighlightClipSchema)
