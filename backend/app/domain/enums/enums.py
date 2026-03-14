@@ -33,6 +33,7 @@ class SectionLabel(str, Enum):
     praise_worship = "praise_worship"
     prayer = "prayer"
     testimony = "testimony"
+    offering = "offering"
     announcements = "announcements"
     sermon = "sermon"
     transition = "transition"

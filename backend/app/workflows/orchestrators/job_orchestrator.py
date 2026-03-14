@@ -250,6 +250,12 @@ class JobOrchestrator:
                         vtt_path,
                         sermon_end=sermon_result.end_seconds
                     )
+                    
+                    # Persist sermon assets
+                    self.db.add(MediaAsset(job_id=job_id, asset_type=AssetType.sermon_video.value, file_path=sermon_video_path, file_name="sermon.mp4", format="mp4"))
+                    self.db.add(MediaAsset(job_id=job_id, asset_type=AssetType.subtitle_srt.value, file_path=srt_path, file_name="sermon.srt", format="srt"))
+                    self.db.add(MediaAsset(job_id=job_id, asset_type=AssetType.subtitle_vtt.value, file_path=vtt_path, file_name="sermon.vtt", format="vtt"))
+                    await self.db.commit()
                 except Exception as e:
                     logger.warning(f"Export partially failed: {e}")
             await self.job_service.update_stage(job_id, JobStage.sermon_exported, progress=0.95)

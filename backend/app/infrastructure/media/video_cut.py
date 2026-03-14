@@ -17,13 +17,15 @@ class VideoCutService:
             "-ss", str(start),
             "-i", source_path,
             "-t", str(duration),
-            "-c", "copy",
+            "-c:v", "libx264",
+            "-c:a", "aac",
+            "-pix_fmt", "yuv420p",
             output_path,
         ]
         try:
             _, stderr, returncode = await run_subprocess(
                 cmd,
-                timeout=300,  # 5 minutes timeout for fast copy-cuts
+                timeout=600,  # Increased timeout for re-encoding
                 log_path=log_path,
             )
             if returncode != 0:
@@ -65,6 +67,7 @@ class VideoCutService:
             "-filter_complex", filter_complex,
             "-c:v", "libx264",
             "-c:a", "aac",
+            "-pix_fmt", "yuv420p",
             "-aspect", "9:16",
             output_path,
         ]

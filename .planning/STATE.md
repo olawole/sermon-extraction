@@ -20,6 +20,10 @@ Phase 2 (Robust Execution) is complete. The system now supports stage-based chec
 | Fix Whisper 413 Payload | Reduced bitrate to 32kbps and added pre-flight size validation (max 25MB). | 2026-03-14 |
 | Implement Audio Chunking | Added automatic 20-min segmenting for Whisper to support 4+ hour recordings. | 2026-03-14 |
 | Implement Audio Chunking | Added ffmpeg-based 20-min segmentation for Whisper transcription to handle 4+ hour files. | 2026-03-15 |
+| Fix Issues & Polish UI | Fixed rendering compatibility (yuv420p), refined sermon detection, persisted sermon assets, and polished UI theme. | 2026-03-15 |
+| Improve Service Detection | Refined OpenAI classifier prompt and boundary logic to better handle multi-service recordings and reduce false positives. | 2026-03-15 |
+| Improve Detection Patterns | Added `offering` label and refined prompt/logic to handle varied service flows (testimony/offering in between). | 2026-03-15 |
+| Improve Detection Patterns | Added `offering` label, updated OpenAI prompt with church service sequence, and refined service boundary detection for long-running services. | 2026-03-15 |
 
 ## Current Phase: Phase 5 (Advanced Distribution & Polish)
 **Objective:** Multi-user support, direct social publishing, and stylized overlays.

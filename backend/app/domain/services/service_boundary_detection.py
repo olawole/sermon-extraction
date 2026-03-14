@@ -17,65 +17,90 @@ class ServiceBoundaryDetectionService:
         section_segments: list,
         total_duration: float,
     ) -> list[ServiceBoundaryResult]:
-        # Identify all potential boundary segments (transitions or praise_worship)
-        boundary_labels = {
-            SectionLabel.transition.value,
-            "transition",
-            SectionLabel.praise_worship.value,
-            "praise_worship",
-        }
-
-        boundaries = [
-            s for s in section_segments
-            if s.label in boundary_labels
-        ]
-
-        if not boundaries:
+        """
+        Detects church services from a list of classified section segments.
+        A service boundary is detected if:
+          - There is a 'transition' or 'other' segment longer than 5 minutes (300s).
+          - A 'praise_worship' segment occurs after a 'sermon' has already been completed in the current service.
+          - A 'praise_worship' segment occurs after the current service has been running for a long time (> 60 mins).
+        """
+        if not section_segments:
             return [
                 ServiceBoundaryResult(
                     service_number=1,
                     start_seconds=0.0,
                     end_seconds=total_duration,
-                    confidence=0.8,
+                    confidence=0.5,
                 )
             ]
 
-        # Sort boundaries by start time to handle them in order
-        boundaries.sort(key=lambda s: s.start_seconds)
+        services = []
+        current_segments = []
+        has_sermon_in_current_service = False
+        service_start_time = section_segments[0].start_seconds
 
-        results = []
-        current_start = 0.0
-        service_count = 1
+        for segment in section_segments:
+            duration = segment.end_seconds - segment.start_seconds
+            current_service_duration = segment.start_seconds - service_start_time
+            
+            is_long_gap = (
+                segment.label in (SectionLabel.transition.value, SectionLabel.other.value)
+                and duration > 300
+            )
+            
+            # A new service cycle starts if we see praise_worship AND:
+            # 1. We've already had a sermon in this service, OR
+            # 2. This service has been running for a long time (> 60 mins)
+            is_new_cycle = (
+                segment.label == SectionLabel.praise_worship.value
+                and (has_sermon_in_current_service or current_service_duration > 3600)
+            )
 
-        for b in boundaries:
-            # If there's a gap between the current start and the next transition,
-            # that gap constitutes a service.
-            if b.start_seconds > current_start:
-                results.append(ServiceBoundaryResult(
-                    service_number=service_count,
-                    start_seconds=current_start,
-                    end_seconds=b.start_seconds,
-                    confidence=0.8,
-                ))
-                service_count += 1
-            # Move the current_start to the end of the transition segment
-            current_start = max(current_start, b.end_seconds)
+            if is_long_gap or is_new_cycle:
+                if current_segments:
+                    # Finalize the current service
+                    services.append(ServiceBoundaryResult(
+                        service_number=len(services) + 1,
+                        start_seconds=current_segments[0].start_seconds,
+                        end_seconds=current_segments[-1].end_seconds,
+                        confidence=0.9,
+                    ))
+                    current_segments = []
+                    has_sermon_in_current_service = False
+                
+                if is_long_gap:
+                    # Long gaps are not part of any service
+                    # We'll update service_start_time when the next service segment starts
+                    continue
+                else:
+                    # is_new_cycle: the current segment (praise_worship) is the start of the new service
+                    service_start_time = segment.start_seconds
 
-        # After all transitions, if there's time remaining, that's the final service
-        if current_start < total_duration:
-            results.append(ServiceBoundaryResult(
-                service_number=service_count,
-                start_seconds=current_start,
-                end_seconds=total_duration,
-                confidence=0.8,
+            if not current_segments:
+                service_start_time = segment.start_seconds
+
+            current_segments.append(segment)
+            if segment.label == SectionLabel.sermon.value:
+                has_sermon_in_current_service = True
+
+        # Finalize the last service if it exists
+        if current_segments:
+            services.append(ServiceBoundaryResult(
+                service_number=len(services) + 1,
+                start_seconds=current_segments[0].start_seconds,
+                end_seconds=current_segments[-1].end_seconds,
+                confidence=0.9,
             ))
 
-        # Handle the case where the only segments were boundaries that covered everything
-        if not results and boundaries:
-            # This shouldn't really happen with typical church data, but for robustness:
-            # If everything was a boundary, we might just return the whole thing or nothing.
-            # Given the instruction "assume a single service", let's ensure we return something.
-            # But the logic above already handles this if current_start < total_duration.
-            pass
+        # Fallback if no services were detected (e.g., all segments were long gaps)
+        if not services:
+            return [
+                ServiceBoundaryResult(
+                    service_number=1,
+                    start_seconds=0.0,
+                    end_seconds=total_duration,
+                    confidence=0.5,
+                )
+            ]
 
-        return results
+        return services
