@@ -126,6 +126,8 @@ class HighlightClip(Base):
     hook_text: Mapped[str] = mapped_column(Text, nullable=False)
     transcript: Mapped[str] = mapped_column(Text, nullable=False)
     reasons: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    social_caption: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    hashtags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String, default=HighlightStatus.pending.value)
     rendered_asset_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("media_assets.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

@@ -1,5 +1,8 @@
 from __future__ import annotations
 import logging
+import zipfile
+import tempfile
+import shutil
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +21,66 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["jobs"])
+
+
+@router.get("/{job_id}/bundle")
+async def download_bundle(
+    job_id: int,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    service = JobService(db)
+    job = await service.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    highlights = await service.get_highlights(job_id)
+    rendered_highlights = [h for h in highlights if h.status == HighlightStatus.rendered.value]
+    
+    if not rendered_highlights:
+        raise HTTPException(status_code=404, detail="No rendered highlights found")
+    
+    temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+    temp_zip.close()
+    
+    try:
+        with zipfile.ZipFile(temp_zip.name, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            social_content = []
+            job_assets = await service.get_assets(job_id)
+            
+            for h in rendered_highlights:
+                # Add video
+                if h.rendered_asset_id:
+                    asset = await service.get_asset(h.rendered_asset_id)
+                    if asset and Path(asset.file_path).exists():
+                        zip_file.write(asset.file_path, arcname=f"highlight_{h.id}/{asset.file_name}")
+                
+                # Add ASS if exists
+                ass_asset = next((a for a in job_assets if a.file_name == f"highlight_{h.id}.ass"), None)
+                if ass_asset and Path(ass_asset.file_path).exists():
+                    zip_file.write(ass_asset.file_path, arcname=f"highlight_{h.id}/{ass_asset.file_name}")
+                
+                # Add social info
+                social_content.append(
+                    f"--- Highlight {h.id} ---\n"
+                    f"Title: {h.title}\n"
+                    f"Caption: {h.social_caption or ''}\n"
+                    f"Hashtags: {h.hashtags or ''}\n\n"
+                )
+            
+            if social_content:
+                zip_file.writestr("social.txt", "".join(social_content))
+        
+        background_tasks.add_task(lambda: Path(temp_zip.name).unlink(missing_ok=True))
+        return FileResponse(
+            path=temp_zip.name,
+            filename=f"job_{job_id}_highlights.zip",
+            media_type="application/zip"
+        )
+    except Exception as exc:
+        Path(temp_zip.name).unlink(missing_ok=True)
+        logger.error(f"Failed to create bundle for job {job_id}: {exc}")
+        raise HTTPException(status_code=500, detail="Failed to create bundle")
 
 
 @router.get("/{job_id}/assets/{asset_id}/download")

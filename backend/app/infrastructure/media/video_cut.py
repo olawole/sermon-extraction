@@ -17,9 +17,10 @@ class VideoCutService:
             "-ss", str(start),
             "-i", source_path,
             "-t", str(duration),
-            "-c:v", "libx264",
-            "-c:a", "aac",
+            "-c:v", "libx264", "-crf", "18", "-preset", "slow",
+            "-c:a", "aac", "-b:a", "192k",
             "-pix_fmt", "yuv420p",
+            "-vf", "scale='trunc(iw/2)*2:trunc(ih/2)*2'",
             output_path,
         ]
         try:
@@ -50,14 +51,17 @@ class VideoCutService:
         filter_complex = (
             f"[0:v]split=2[bg][fg]; "
             f"[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=20:10[bg_blurred]; "
-            f"[fg]scale=1080:-1[fg_scaled]; "
-            f"[bg_blurred][fg_scaled]overlay=(W-w)/2:(H-h)/2"
+            f"[fg]scale=1080:-2[fg_scaled]; "
+            f"[bg_blurred][fg_scaled]overlay=(W-w)/2:(H-h)/2,unsharp=3:3:1.5:3:3:0.5"
         )
         
         if burn_subtitles_path:
             # Escape path for ffmpeg subtitles filter
             escaped_sub_path = burn_subtitles_path.replace("\\", "/").replace(":", "\\:")
-            filter_complex += f",subtitles='{escaped_sub_path}'"
+            if burn_subtitles_path.lower().endswith(".ass"):
+                filter_complex += f",ass='{escaped_sub_path}'"
+            else:
+                filter_complex += f",subtitles='{escaped_sub_path}'"
 
         cmd = [
             settings.ffmpeg_path, "-y",
@@ -65,8 +69,8 @@ class VideoCutService:
             "-i", source_path,
             "-t", str(duration),
             "-filter_complex", filter_complex,
-            "-c:v", "libx264",
-            "-c:a", "aac",
+            "-c:v", "libx264", "-crf", "18", "-preset", "slow",
+            "-c:a", "aac", "-b:a", "192k",
             "-pix_fmt", "yuv420p",
             "-aspect", "9:16",
             output_path,

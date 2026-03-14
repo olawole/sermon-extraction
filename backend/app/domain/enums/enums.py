@@ -27,6 +27,7 @@ class AssetType(str, Enum):
     transcript_txt = "transcript_txt"
     subtitle_srt = "subtitle_srt"
     subtitle_vtt = "subtitle_vtt"
+    subtitle_ass = "subtitle_ass"
     highlight_clip = "highlight_clip"
 
 class SectionLabel(str, Enum):

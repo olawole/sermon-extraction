@@ -57,3 +57,19 @@ def test_srt_with_sermon_end():
         assert "Keep also" in content
         assert "Discard" not in content
 
+
+def test_ass_generation():
+    generator = SubtitleGenerator()
+    chunks = make_chunks()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "test.ass")
+        result = generator.generate_ass(chunks, sermon_start=100.0, output_path=path)
+        assert os.path.exists(result)
+        with open(result) as f:
+            content = f.read()
+        assert "[Script Info]" in content
+        assert "[V4+ Styles]" in content
+        assert "[Events]" in content
+        assert "Style: Default,Arial,20,&H00FFFFFF" in content
+        assert "Dialogue: 0,0:00:00.00,0:00:10.00,Default,,0,0,0,,Hello world" in content
+

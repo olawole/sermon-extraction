@@ -82,6 +82,8 @@ class HighlightClipSchema(BaseModel):
     hook_text: str
     transcript: str
     reasons: Optional[List[Any]] = None
+    social_caption: Optional[str] = None
+    hashtags: Optional[str] = None
     status: str
 
 

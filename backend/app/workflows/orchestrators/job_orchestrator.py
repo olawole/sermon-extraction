@@ -16,7 +16,7 @@ from app.domain.services.service_boundary_detection import ServiceBoundaryDetect
 from app.domain.services.sermon_detection import SermonDetectionService
 from app.domain.services.highlight_generation import HighlightCandidateGenerator
 from app.infrastructure.ai.provider_factory import get_transcription_provider, get_classification_provider
-from app.infrastructure.ai.scoring.highlight_scorer import RuleBasedHighlightScorer
+from app.infrastructure.ai.scoring.highlight_scorer import RuleBasedHighlightScorer, OpenAIHighlightScorer
 from app.infrastructure.youtube.ingestion import VideoIngestionService
 from app.infrastructure.media.audio_extraction import AudioExtractionService
 from app.infrastructure.media.video_cut import VideoCutService
@@ -41,7 +41,10 @@ class JobOrchestrator:
         self.service_detector = ServiceBoundaryDetectionService()
         self.sermon_detector = SermonDetectionService()
         self.highlight_generator = HighlightCandidateGenerator()
-        self.scorer = RuleBasedHighlightScorer()
+        if settings.ai_provider == "openai":
+            self.scorer = OpenAIHighlightScorer()
+        else:
+            self.scorer = RuleBasedHighlightScorer()
         self.video_cutter = VideoCutService()
         self.subtitle_generator = SubtitleGenerator()
 
@@ -269,13 +272,17 @@ class JobOrchestrator:
                 candidates = self.highlight_generator.generate_candidates(
                     transcript_data, sermon_result.start_seconds, sermon_result.end_seconds
                 )
-                scored_candidates = [(c, self.scorer.score(c)) for c in candidates]
+                
+                scored_candidates = []
+                for c in candidates:
+                    score = await self.scorer.score(c)
+                    scored_candidates.append((c, score))
+                
                 scored_candidates.sort(key=lambda x: x[1], reverse=True)
                 top_candidates = scored_candidates[:10]
 
                 await self.job_service.update_stage(job_id, JobStage.highlights_generated, progress=0.99)
                 for candidate, score in top_candidates:
-                    candidate.score = score
                     hl = HighlightClip(
                         job_id=job_id,
                         start_seconds=candidate.start_seconds,
@@ -286,6 +293,8 @@ class JobOrchestrator:
                         hook_text=candidate.hook_text,
                         transcript=candidate.transcript,
                         reasons=candidate.reasons,
+                        social_caption=candidate.social_caption,
+                        hashtags=candidate.hashtags,
                         status=HighlightStatus.pending.value,
                     )
                     self.db.add(hl)
@@ -309,24 +318,55 @@ class JobOrchestrator:
         job_dir = self.storage.job_dir(job_id)
         source_path = str(Path(job_dir) / "video.mp4")
         sermon_path = str(Path(job_dir) / "sermon.mp4")
-        srt_path = str(Path(job_dir) / "sermon.srt")
 
-        video_source = sermon_path if Path(sermon_path).exists() else source_path
-        subtitle_source = srt_path if Path(srt_path).exists() else None
+        # Determine video source and relative start/end
+        video_source = source_path
+        cut_start = highlight.start_seconds
+        cut_end = highlight.end_seconds
+
+        if Path(sermon_path).exists():
+            _, _, sermon = await self.job_service.get_segments(job_id)
+            if sermon:
+                video_source = sermon_path
+                cut_start = highlight.start_seconds - sermon.start_seconds
+                cut_end = highlight.end_seconds - sermon.start_seconds
+
+        if not Path(video_source).exists():
+            logger.warning(f"Source video {video_source} not found for job {job_id}; skipping render")
+            return
+
+        # Generate highlight-specific ASS file
+        chunks = await self.job_service.get_transcript(job_id)
+        ass_filename = f"highlight_{highlight_id}.ass"
+        ass_path = str(Path(job_dir) / ass_filename)
+        
+        self.subtitle_generator.generate_ass(
+            chunks=chunks,
+            sermon_start=highlight.start_seconds,
+            output_path=ass_path,
+            sermon_end=highlight.end_seconds
+        )
+
+        # Persist the .ass file as a MediaAsset
+        ass_asset = MediaAsset(
+            job_id=job_id,
+            asset_type=AssetType.subtitle_ass.value,
+            file_path=ass_path,
+            file_name=ass_filename,
+            format="ass"
+        )
+        self.db.add(ass_asset)
+        await self.db.commit()
 
         output_filename = f"highlight_{highlight_id}_vertical.mp4"
         output_path = str(Path(job_dir) / output_filename)
 
-        if not Path(video_source).exists():
-            logger.warning(f"Source video not found for job {job_id}; skipping render")
-            return
-
         await self.video_cutter.render_vertical(
             source_path=video_source,
-            start=highlight.start_seconds,
-            end=highlight.end_seconds,
+            start=cut_start,
+            end=cut_end,
             output_path=output_path,
-            burn_subtitles_path=subtitle_source,
+            burn_subtitles_path=ass_path,
         )
 
         asset = MediaAsset(

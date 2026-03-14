@@ -24,6 +24,11 @@ Phase 2 (Robust Execution) is complete. The system now supports stage-based chec
 | Improve Service Detection | Refined OpenAI classifier prompt and boundary logic to better handle multi-service recordings and reduce false positives. | 2026-03-15 |
 | Improve Detection Patterns | Added `offering` label and refined prompt/logic to handle varied service flows (testimony/offering in between). | 2026-03-15 |
 | Improve Detection Patterns | Added `offering` label, updated OpenAI prompt with church service sequence, and refined service boundary detection for long-running services. | 2026-03-15 |
+| Stylized Overlays | Implemented professional ASS captions with custom styles (font, outline, position) for highlight clips. | 2026-03-15 |
+| Fix Corrupted Videos | Ensured even dimensions (scale=1080:-2) for libx264 encoder to prevent unplayable output. | 2026-03-15 |
+| Professional Suite | Implemented AI social content, \"Lower Third\" branding, ZIP bulk export, and interactive review UI with transcript syncing. | 2026-03-15 |
+| Remove Overlays | Removed lower-third text overlays from highlight clips based on user feedback. | 2026-03-15 |
+| Improve Video Quality | Upgraded encoding to CRF 18, preset slow, 192k audio, and added a sharpening filter for high-fidelity output. | 2026-03-15 |
 
 ## Current Phase: Phase 5 (Advanced Distribution & Polish)
 **Objective:** Multi-user support, direct social publishing, and stylized overlays.

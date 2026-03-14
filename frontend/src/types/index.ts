@@ -75,6 +75,8 @@ export interface HighlightClip {
   hook_text: string;
   transcript: string;
   reasons: string[];
+  social_caption: string | null;
+  hashtags: string | null;
   status: HighlightStatus;
 }
 

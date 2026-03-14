@@ -14,6 +14,8 @@ class HighlightCandidate:
     title: str = ""
     hook_text: str = ""
     reasons: list[str] = field(default_factory=list)
+    social_caption: str = ""
+    hashtags: str = ""
 
 
 class HighlightCandidateGenerator:
